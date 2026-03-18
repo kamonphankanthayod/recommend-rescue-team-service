@@ -1,0 +1,150 @@
+{
+    "REQ-8812-9901": {
+        "request": {
+            "requestId": "REQ-8812-9901",
+            "incidentId": "019C774D-1AC5-75BB-AE95-5CD4AEB8925B",
+            "requestType": "fire_rescue",
+            "description": "ติดอยู่ชั้น 1",
+            "peopleCount": 4,
+            "specialNeeds": ["bedridden"],
+            "location": {
+            "latitude": 18.7883,
+            "longitude": 98.9853,
+            "locationDetails": { "floor": "1", "landmark": "หน้าโรงเรียน" },
+            "province": "เชียงใหม่",
+            "district": "เมืองเชียงใหม่",
+            "subdistrict": "สุเทพ",
+            "addressLine": "123 ม.2 ถ.ห้วยแก้ว"
+            },
+            "contact": {
+            "contactName": "สมชาย",
+            "contactPhoneMasked": "081***678"
+            },
+            "sourceChannel": "MOBILE_APP",
+            "submittedAt": "2026-02-21T10:30:00Z",
+            "lastCitizenUpdateAt": "2026-03-03T08:10:00Z"
+        },
+        "current": {
+            "status": "ASSIGNED",
+            "priority_score": 85,
+            "priority_level": "High",
+            "assignedUnitId": "UNIT-CAR-05",
+            "assignedAt": "2026-02-21T11:00:00Z",
+            "latestNote": { "message": "กำลังเดินทาง" },
+            "stateVersion": 3,
+            "lastEventId": "019C774D-1AC5-75BB-AE95-5CD4AEB8925B",
+            "lastUpdatedAt": "2026-02-21T11:00:00Z"
+        }
+    },
+    "REQ-8812-9902": {
+        "request": {
+            "requestId": "REQ-8812-9902",
+            "incidentId": "020C774D-1AC5-75BB-AE95-5CD4AEB8925B",
+            "requestType": "flood_rescue",
+            "description": "ติดอยู่ชั้น 1",
+            "peopleCount": 5,
+            "specialNeeds": ["bedridden"],
+            "location": {
+            "latitude": 100.7883,
+            "longitude": 198.9853,
+            "locationDetails": { "floor": "1", "landmark": "หน้าโรงเรียน" },
+            "province": "เชียงใหม่",
+            "district": "เมืองเชียงใหม่",
+            "subdistrict": "สุเทพ",
+            "addressLine": "123 ม.2 ถ.ห้วยแก้ว"
+            },
+            "contact": {
+            "contactName": "สมชาย",
+            "contactPhoneMasked": "081***678"
+            },
+            "sourceChannel": "MOBILE_APP",
+            "submittedAt": "2026-02-21T10:30:00Z",
+            "lastCitizenUpdateAt": "2026-03-03T08:10:00Z"
+        },
+        "current": {
+            "status": "ASSIGNED",
+            "priority_score": 90,
+            "priority_level": "High",
+            "assignedUnitId": "UNIT-BOAT-05",
+            "assignedAt": "2026-02-21T11:00:00Z",
+            "latestNote": { "message": "กำลังเดินทาง" },
+            "stateVersion": 3,
+            "lastEventId": "020C774D-1AC5-75BB-AE95-5CD4AEB8925B",
+            "lastUpdatedAt": "2026-02-21T11:00:00Z"
+        }
+    },
+    "REQ-8812-9903": {
+        "request": {
+            "requestId": "REQ-8812-9901",
+            "incidentId": "019C774D-1AC5-75BB-AE95-5CD4AEB8925B",
+            "requestType": "fire_rescue",
+            "description": "ติดอยู่ชั้น 3",
+            "peopleCount": 7,
+            "specialNeeds": ["bedridden"],
+            "location": {
+            "latitude": 18.7883,
+            "longitude": 98.9853,
+            "locationDetails": { "floor": "3", "landmark": "หน้าโรงเรียน" },
+            "province": "เชียงใหม่",
+            "district": "เมืองเชียงใหม่",
+            "subdistrict": "สุเทพ",
+            "addressLine": "123 ม.2 ถ.ห้วยแก้ว"
+            },
+            "contact": {
+            "contactName": "สมชาย",
+            "contactPhoneMasked": "081***678"
+            },
+            "sourceChannel": "MOBILE_APP",
+            "submittedAt": "2026-02-21T10:30:00Z",
+            "lastCitizenUpdateAt": "2026-03-03T08:10:00Z"
+        },
+        "current": {
+            "status": "ASSIGNED",
+            "priority_score": 85,
+            "priority_level": "High",
+            "assignedUnitId": "UNIT-CAR-05",
+            "assignedAt": "2026-02-21T11:00:00Z",
+            "latestNote": { "message": "กำลังเดินทาง" },
+            "stateVersion": 3,
+            "lastEventId": "019C774D-1AC5-75BB-AE95-5CD4AEB8925B",
+            "lastUpdatedAt": "2026-02-21T11:00:00Z"
+        }
+    },
+    "REQ-8812-9904": {
+        "request": {
+            "requestId": "REQ-8812-9904",
+            "incidentId": "020C774D-1AC5-75BB-AE95-5CD4AEB8925B",
+            "requestType": "flood_rescue",
+            "description": "ติดอยู่ชั้น 4",
+            "peopleCount": 5,
+            "specialNeeds": ["bedridden"],
+            "location": {
+            "latitude": 100.7883,
+            "longitude": 198.9853,
+            "locationDetails": { "floor": "4", "landmark": "หน้าโรงเรียน" },
+            "province": "เชียงใหม่",
+            "district": "เมืองเชียงใหม่",
+            "subdistrict": "สุเทพ",
+            "addressLine": "123 ม.2 ถ.ห้วยแก้ว"
+            },
+            "contact": {
+            "contactName": "สมชาย",
+            "contactPhoneMasked": "081***678"
+            },
+            "sourceChannel": "MOBILE_APP",
+            "submittedAt": "2026-02-21T10:30:00Z",
+            "lastCitizenUpdateAt": "2026-03-03T08:10:00Z"
+        },
+        "current": {
+            "status": "ASSIGNED",
+            "priority_score": 90,
+            "priority_level": "High",
+            "assignedUnitId": "UNIT-BOAT-05",
+            "assignedAt": "2026-02-21T11:00:00Z",
+            "latestNote": { "message": "กำลังเดินทาง" },
+            "stateVersion": 3,
+            "lastEventId": "020C774D-1AC5-75BB-AE95-5CD4AEB8925B",
+            "lastUpdatedAt": "2026-02-21T11:00:00Z"
+        }
+    }
+}

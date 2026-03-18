@@ -1,0 +1,52 @@
+{
+    "019C774D-1AC5-75BB-AE95-5CD4AEB8925B": {
+        "incident_id": "019C774D-1AC5-75BB-AE95-5CD4AEB8925B",
+        "incident_type": "fire",
+        "incident_description": "Fire reported near TU Dome (Verified)",
+        "exact_location": "14.0649,100.6003",
+        "exact_location_description": "TU Dome's outdoor parking lot",
+        "impact_level": 3,
+        "priority": "High",
+        "status": "DISPATCHED",
+        "reported_by": "ReportVerifyService",
+        "created_at": "2026-02-22T00:00:00Z",
+        "updated_at": "2026-02-22T00:01:04Z",
+        "timeline": [
+            {
+                "time": "2026-02-22T00:00:00Z ",
+                "event": "Created",
+                "detail": "Incident verified"
+            },
+            {
+                "time": "2026-02-22T00:01:04Z ",
+                "event": "Status Changed",
+                "detail": "DISPATCHED"
+            }
+        ]
+    },
+    "020C774D-1AC5-75BB-AE95-5CD4AEB8925B": {
+        "incident_id": "020C774D-1AC5-75BB-AE95-5CD4AEB8925B",
+        "incident_type": "flood",
+        "incident_description": "flood reported near Zeven (Verified)",
+        "exact_location": "14.0649,100.6003",
+        "exact_location_description": "Zeven's outdoor parking lot",
+        "impact_level": 4,
+        "priority": "High",
+        "status": "DISPATCHED",
+        "reported_by": "ReportVerifyService",
+        "created_at": "2026-02-22T00:00:00Z",
+        "updated_at": "2026-02-22T00:01:04Z",
+        "timeline": [
+            {
+                "time": "2026-02-22T00:00:00Z ",
+                "event": "Created",
+                "detail": "Incident verified"
+            },
+            {
+                "time": "2026-02-22T00:01:04Z ",
+                "event": "Status Changed",
+                "detail": "DISPATCHED"
+            }
+        ]
+    }
+}
