@@ -1,7 +1,8 @@
 import json
 import uuid
 import boto3
-import os 
+import os
+import hashlib
 from datetime import datetime
 from decimal import Decimal
 from boto3.dynamodb.conditions import Key
@@ -16,7 +17,7 @@ def format_recommendation(item):
     return {
         "recommendation_id": item["recommendation_id"],
         "request_id": item["request_id"],
-        "status": item["status"],
+        "recommendation_status": item["recommendation_status"],
         "confidence_score": float(item["confidence_score"]),
         "ranked_teams": [
             {
@@ -35,6 +36,15 @@ def format_recommendation(item):
         ],
         "model_version": item["model_version"],
         "evaluated_at": item["evaluated_at"]
+    }
+
+def format_create_recommendation(item):
+    return {
+        "recommendation_id": item["recommendation_id"],
+        "request_id": item["request_id"],
+        "incident_id": item["incident_id"],
+        "recommendation_status": item["recommendation_status"],
+        "created_at": item["created_at"]
     }
 
 def build_error(status_code, code, message, trace_id, details=None):
@@ -65,9 +75,12 @@ def is_valid_uuid(val):
     except:
         return False
 
+def hash_body(body):
+    return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
+
 
 def lambda_handler(event, context):
-    #print(json.dumps(event))
+    print(json.dumps(event))
     path = event["rawPath"]     # "/v1/recommendations" ||| 
     method = event["requestContext"]["http"]["method"]     # "POST" ||| "GET"
     print(f"Received {method} request for path: {path}")
@@ -89,7 +102,84 @@ def create_recommendation(event):
     print(f"[{trace_id}] START --- POST /v1/recommendations")
 
     try:
+        print(f"[{trace_id}] Parsing request data - Header, Body")
+        headers = event.get("headers", {})
+        idempotency_key = headers.get("idempotency-key")
         body = json.loads(event.get("body", "{}"))
+        print(f"[{trace_id}] Headers: {json.dumps(headers)}")
+        print(f"[{trace_id}] Idempotency-Key: {idempotency_key}")
+        print(f"[{trace_id}] Body: {json.dumps(body)}")
+
+        ## Validation Header Error: 400 Bad Request
+        if not idempotency_key:
+            print(f"[{trace_id}] 400 VALIDATION_HEADER_ERROR - Idempotency-Key is required")
+            return build_error(
+                400,
+                "VALIDATION_HEADER_ERROR",
+                "Idempotency-Key is required",
+                trace_id,
+                [{"field": "idempotency_key", "issue": "missing"}]
+            )
+
+        ## Validation Header Error: 400 Bad Request
+        if not is_valid_uuid(idempotency_key):
+            print(f"[{trace_id}] 400 VALIDATION_HEADER_ERROR - Invalid idempotency_key format")
+            return build_error(
+                400,
+                "VALIDATION_HEADER_ERROR",
+                "Invalid idempotency_key format - Idempotency-Key must be a valid UUID",
+                trace_id,
+                [{"field": "idempotency_key", "issue": "invalid_format"}]
+            )
+        
+        # Check if the idempotency key is already used
+        print(f"[{trace_id}] Checking for existing recommendation with idempotency key: {idempotency_key}")
+        response = table.query(
+            IndexName="idempotency_key-index",
+            KeyConditionExpression=Key("idempotency_key").eq(idempotency_key),
+            Limit=1
+        )
+
+        items = response.get("Items", [])
+        
+        print(f"[{trace_id}] Existing items count: {len(items)}, Items: {items}")
+        ## Error: 500 INTERNAL_SERVER_ERROR
+        if len(items) > 1:
+            print(f"[{trace_id}] 500 INTERNAL_SERVER_ERROR - Multiple items found with same idempotency key")
+            return build_error(
+                500,
+                "INTERNAL_SERVER_ERROR",
+                "Multiple recommendations found with same idempotency key",
+                trace_id
+            )
+
+        if items:
+            ## Error: 409 Conflict - Key same but body not same
+            existing = items[0]
+            if existing["request_hash"] != hash_body(body):
+                print(f"[{trace_id}] 409 CONFLICT - Idempotency-Key already used with different payload")
+                return build_error(
+                    409,
+                    "IDEMPOTENCY_KEY_REUSE_WITH_DIFFERENT_PAYLOAD",
+                    "Same Idempotency-Key used with different request body",
+                    trace_id
+            )
+
+            ## 200 Success - Key same and body same
+            print(f"[{trace_id}] 200 Success - Idempotent replay")
+            response_item = format_create_recommendation(items[0])
+            return {
+                "statusCode": 200,
+                "headers": {
+                    "Content-Type": "application/json"
+                },
+                "body": json.dumps(response_item, default=decimal_to_float)
+            }
+
+
+        # If not Idempotency-Key Goooo!!!
+        print(f"[{trace_id}] Idempotency-Key not found. Processing new request.")
+        
         request_id = body.get("request_id")
 
         ## Validation Error: 400 Bad Request
@@ -103,23 +193,25 @@ def create_recommendation(event):
                 [{"field": "request_id", "issue": "missing"}]
             )
 
-        ## Error: 409 Conflict
-        response = table.query(
+        response_req = table.query(
             IndexName="request_id-index",
             KeyConditionExpression=Key("request_id").eq(request_id),
             Limit=1
-            )
+        )
 
-        items = response.get("Items", [])
+        existing_items = response_req.get("Items", [])
         
-        if items:
-            print(f"[{trace_id}] 409 RECOMMENDATION_EXISTS - Recommendation already exists for request: {request_id}")
-            return build_error(
-                409,
-                "RECOMMENDATION_EXISTS",
-                "Recommendation already exists for this request",
-                trace_id
-            )
+        if existing_items:
+            print(f"[{trace_id}] 200 Success - Recommendation already exists for request: {request_id}")
+            response_item = format_create_recommendation(existing_items[0])
+            return {
+                "statusCode": 200,
+                "headers": {
+                    "Content-Type": "application/json"
+                },
+                "body": json.dumps(response_item, default=decimal_to_float)
+            }
+
 
         # Call external service (mock/real) 
         rescue_data = get_rescue_request(request_id, trace_id)
@@ -135,11 +227,9 @@ def create_recommendation(event):
                 trace_id
             )
 
-        #incident_id = rescue_data["request"]["incidentId"]
+        incident_id = rescue_data["request"]["incidentId"]
         #incident_data = get_incident(incident_id, trace_id)
         #print(json.dumps(incident_data))
-
-
 
         # logic to generate recommendation
         print(f"[{trace_id}] Creating recommendation for request: {request_id}")
@@ -150,7 +240,8 @@ def create_recommendation(event):
         item = {
             "recommendation_id": recommendation_id,
             "request_id": request_id,
-            "status": "GENERATED",
+            "incident_id": incident_id,
+            "recommendation_status": "GENERATED",
             "confidence_score": Decimal("4.0"),
             "ranked_teams": [
                 {
@@ -167,10 +258,15 @@ def create_recommendation(event):
                 }
             ],
             "model_version": "v1.0.0",
-            "evaluated_at": datetime.utcnow().isoformat(timespec='milliseconds') + "Z" 
+            "created_at": datetime.utcnow().isoformat(timespec='milliseconds') + "Z",
+            "evaluated_at": datetime.utcnow().isoformat(timespec='milliseconds') + "Z",
+            "idempotency_key": idempotency_key,
+            "request_hash": hash_body(body)
         }
 
         table.put_item(Item=item)
+
+        response_item = format_create_recommendation(item)
 
         ## Success: 201 Created
         print(f"[{trace_id}] 201 Created - Created recommendation with ID: {recommendation_id}")
@@ -180,7 +276,7 @@ def create_recommendation(event):
             "headers": {
                 "Content-Type": "application/json"
             },
-            "body": json.dumps(item, default=decimal_to_float)
+            "body": json.dumps(response_item, default=decimal_to_float)
         }
 
     ## Error: 500 INTERNAL_SERVER_ERROR
