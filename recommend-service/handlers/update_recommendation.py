@@ -50,7 +50,7 @@ def update_recommendation_status(event):
         # 2. Parse & Validate Body
         body = json.loads(event.get("body", "{}"))
         new_status = body.get("recommendation_status")
-        print(f"[{trace_id}] new_status: {new_status} and ALLOWED_UPDATE_STATUSES: {ALLOWED_UPDATE_STATUSES}")
+        # print(f"[{trace_id}] new_status: {new_status} and ALLOWED_UPDATE_STATUSES: {ALLOWED_UPDATE_STATUSES}")
         selected_team_id = body.get("selected_team_id")
         reason = body.get("reason", "")
 
