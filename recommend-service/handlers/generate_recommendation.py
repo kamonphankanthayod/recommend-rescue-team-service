@@ -118,6 +118,7 @@ def generate_recommendation(event):
         print(f"[{trace_id}] Idempotency-Key not found. Processing new request.")
         
         request_id = body.get("request_id")
+        force_reevaluate = body.get("force_reevaluate", False)
 
         ## Validation Error: 400 Bad Request
         if not request_id:
@@ -130,29 +131,50 @@ def generate_recommendation(event):
                 [{"field": "request_id", "issue": "missing"}]
             )
 
+        # ค้นหา Recommendation เดิมของ request_id นี้
         response_req = table.query(
             IndexName="request_id-index",
-            KeyConditionExpression=Key("request_id").eq(request_id),
-            Limit=1
+            KeyConditionExpression=Key("request_id").eq(request_id)
+            # Limit=1
         )
-
         existing_items = response_req.get("Items", [])
-        
-        if existing_items:
-            print(f"[{trace_id}] 200 Success - Recommendation already exists for request: {request_id}")
-            response_item = format_generate_recommendation(existing_items[0])
-            return {
-                "statusCode": 200,
-                "headers": {
-                    "Content-Type": "application/json"
-                },
-                "body": json.dumps(response_item)
-            }
-        
 
+        # กรองหาเฉพาะตัวที่กำลัง "Active" อยู่
+        active_statuses = ["PENDING", "CALCULATING", "GENERATED"]
+        active_items = [item for item in existing_items if item.get("recommendation_status") in active_statuses]
+
+        if active_items:
+            # กรณีที่ 1: มีของเดิมอยู่แต่ไม่ได้สั่งบังคับทำใหม่ (force_reevaluate = False)
+            if not force_reevaluate:
+                print(f"[{trace_id}] 409 CONFLICT - Active recommendation already exists for request: {request_id}")
+                return format_error_response(
+                    409, 
+                    "ACTIVE_RECOMMENDATION_EXISTS", 
+                    "An active recommendation already exists. Set 'force_reevaluate' to true to override.", 
+                    trace_id
+                )
+            
+            # กรณีที่ 2: มีของเดิมอยู่และสั่งบังคับทำใหม่ (force_reevaluate = True)
+            print(f"[{trace_id}] Force reevaluate triggered. Superseding old recommendations.")
+            for old_item in active_items:
+                old_id = old_item['recommendation_id']
+                try:
+                    # เปลี่ยนสถานะของเก่าให้เป็น SUPERSEDED เพื่อเก็บเป็น Audit Trail
+                    table.update_item(
+                        Key={'recommendation_id': old_id},
+                        UpdateExpression="SET recommendation_status = :s, updated_at = :ua",
+                        ExpressionAttributeValues={
+                            ':s': 'SUPERSEDED',
+                            ':ua': datetime.utcnow().isoformat(timespec='milliseconds') + "Z"
+                        }
+                    )
+                    print(f"[{trace_id}] Superseded recommendation_id: {old_id}")
+                except Exception as e:
+                    print(f"[{trace_id}] Failed to supersede {old_id}: {str(e)}")
+
+        
         # Call external service (mock/real) 
         rescue_data = get_rescue_request(request_id, trace_id)
-        #print(json.dumps(rescue_data))
 
         ## Error: 404 Not Found
         if not rescue_data:
@@ -165,30 +187,27 @@ def generate_recommendation(event):
             )
 
         incident_id = rescue_data["request"]["incidentId"]
-        #incident_data = get_incident(incident_id, trace_id)
-        #print(json.dumps(incident_data))
 
-        # logic to generate recommendation
-        print(f"[{trace_id}] Creating recommendation for request: {request_id}")
+        # start process to generate new recommendation
+        print(f"[{trace_id}] Creating NEW recommendation for request: {request_id}")
 
-        # (ตรงนี้ในอนาคตใช้ rescue_data มาคำนวณจริง)
-        recommendation_id = str(uuid.uuid4())
+        # new_recommendation_id
+        new_recommendation_id = str(uuid.uuid4())
 
         item = {
-            "recommendation_id": recommendation_id,
+            "recommendation_id": new_recommendation_id,
             "request_id": request_id,
             "incident_id": incident_id,
-            "recommendation_status": fixed_init_recommendation_status,
+            "recommendation_status": fixed_init_recommendation_status,   # PENDING
             "created_at": datetime.utcnow().isoformat(timespec='milliseconds') + "Z",
             "idempotency_key": idempotency_key,
             "request_hash": hash_body(body)
         }
-
         table.put_item(Item=item)
 
         # Asynchronous Invoke ไปยัง Lambda B (Scoring Worker)
         worker_payload = {
-            "recommendation_id": recommendation_id,
+            "recommendation_id": new_recommendation_id,
             "request_id": request_id,
             "incident_id": incident_id,
             "trace_id": trace_id # ส่ง trace_id ไปด้วยเพื่อให้ไล่ log ง่าย
@@ -209,13 +228,13 @@ def generate_recommendation(event):
             # (ในอนาคตอาจจะมีกลไก Retry ถ้า Invoke พลาด)
             print(f"[{trace_id}] WARNING - Failed to invoke worker lambda: {str(invoke_err)}")
         
-        print(f"[{trace_id}] This is NOT a failure. Recommendation {recommendation_id} is already saved in DB.")
+        print(f"[{trace_id}] This is NOT a failure. Recommendation {new_recommendation_id} is already saved in DB.")
 
 
         response_item = format_generate_recommendation(item)
 
         ## Success: 202 Accepted
-        print(f"[{trace_id}] 202 Accepted - Queued recommendation with ID: {recommendation_id}")
+        print(f"[{trace_id}] 202 Accepted - Queued recommendation with ID: {new_recommendation_id}")
 
         return {
             "statusCode": 202,
