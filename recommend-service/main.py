@@ -28,6 +28,8 @@ def lambda_handler(event, context):
             auth_error_msg, 
             trace_id
         )
+        
+    print(f"[{trace_id}] Request authorized successfully")
 
     if path == "/v1/recommendations" and method == "POST":
         return generate_recommendation(event)
