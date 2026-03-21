@@ -21,28 +21,34 @@ def decimal_to_number(obj):
     raise TypeError
 
 def format_get_recommendation(item):
+    # ป้องกัน Key Error กรณีที่ของเพิ่ง PENDING และยังไม่มี ranked_teams
+    ranked_teams = []
+    for t in item.get("ranked_teams", []):
+        ranked_teams.append({
+            "team_id": t["team_id"],
+            "rank": int(t["rank"]),
+            "total_score": float(t["total_score"]),
+            "score_breakdown": {
+                "specialization_score": float(t["score_breakdown"]["specialization_score"]),
+                "distance_score": float(t["score_breakdown"]["distance_score"]),
+                "availability_score": float(t["score_breakdown"]["availability_score"]),
+                "severity_weight": float(t["score_breakdown"]["severity_weight"]),
+            },
+            "explanation": t["explanation"]
+        })
+    # ดัก Cast confidence_score เป็น int ถ้าไม่มีเศษ
+    conf_score = item.get("confidence_score", Decimal("0"))
+    formatted_conf_score = int(conf_score) if conf_score % 1 == 0 else float(conf_score)
+
     return {
         "recommendation_id": item["recommendation_id"],
         "request_id": item["request_id"],
         "recommendation_status": item["recommendation_status"],
-        "confidence_score": (item["confidence_score"]),
-        "ranked_teams": [
-            {
-                "team_id": t["team_id"],
-                "rank": t["rank"],
-                "total_score": float(t["total_score"]),
-                "score_breakdown": {
-                    "specialization_score": float(t["score_breakdown"]["specialization_score"]),
-                    "distance_score": float(t["score_breakdown"]["distance_score"]),
-                    "availability_score": float(t["score_breakdown"]["availability_score"]),
-                    "severity_weight": float(t["score_breakdown"]["severity_weight"]),
-                },
-                "explanation": t["explanation"]
-            }
-            for t in item.get("ranked_teams", [])
-        ],
-        "model_version": item["model_version"],
-        "evaluated_at": item["evaluated_at"]
+        "confidence_score": formatted_conf_score,
+        "ranked_teams": ranked_teams,
+        "model_version": item.get("model_version", ""),
+        "evaluated_at": item.get("evaluated_at", ""),
+        "created_at": item.get("created_at", "")
     }
 
 def get_recommendation_by_request_id(event):
@@ -81,10 +87,12 @@ def get_recommendation_by_request_id(event):
                 trace_id
             )
 
-        #print("Items:", items)
-        #print(f"Found {len(items)} recommendation(s) for request_id: {request_id}")
+        items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        latest_item = items[0]
 
-        item = format_get_recommendation(items[0])
+        print(f"[{trace_id}] Found {len(items)} versions. Picking the latest one: {latest_item.get('recommendation_id')}")
+
+        item = format_get_recommendation(latest_item)
         print(f"[{trace_id}] Data: {json.dumps(item, default=decimal_to_number)}")
         
         ## Success: 200 Success
