@@ -5,12 +5,29 @@ from handlers.get_recommendation import get_recommendation_by_request_id
 from handlers.delete_recommendation import delete_recommendation
 from handlers.update_recommendation import update_recommendation_status
 
+from utils.auth import authorize_dispatcher
+from utils.error_response import format_error_response
 
 def lambda_handler(event, context):
+    trace_id = event["requestContext"].get("requestId", "unknown-trace-id")
+    
     print(json.dumps(event))
+
     path = event["rawPath"]     # "/v1/recommendations"
     method = event["requestContext"]["http"]["method"]     # "POST" || "GET" || "DELETE" || "PATCH"
-    print(f"Received {method} request for path: {path}")
+
+    print(f"[{trace_id}] Received {method} request for path: {path}")
+
+    # AUTHORIZATION MIDDLEWARE
+    is_authorized, auth_error_msg = authorize_dispatcher(event)
+    if not is_authorized:
+        print(f"[{trace_id}] 401 UNAUTHORIZED - {auth_error_msg}")
+        return format_error_response(
+            401, 
+            "UNAUTHORIZED", 
+            auth_error_msg, 
+            trace_id
+        )
 
     if path == "/v1/recommendations" and method == "POST":
         return generate_recommendation(event)
