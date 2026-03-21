@@ -1,0 +1,50 @@
+[
+    {
+      "team_id": "TEAM-F01",
+      "team_name": "หน่วยดับเพลิงและกู้ภัย คลองหลวง (Fire & Rescue)",
+      "current_location": {
+        "latitude": 14.0600,
+        "longitude": 100.6050
+      },
+      "status": "AVAILABLE",
+      "specialties": ["FIRE_RESCUE", "HAZMAT", "SEARCH_AND_RESCUE"],
+      "equipment": ["FIRE_TRUCK", "OXYGEN_TANKS", "LADDER_TRUCK"],
+      "personnel_count": 8
+    },
+    {
+      "team_id": "TEAM-M02",
+      "team_name": "ทีมแพทย์สนามด่วนพิเศษ ธรรมศาสตร์",
+      "current_location": {
+        "latitude": 14.0680,
+        "longitude": 100.6010
+      },
+      "status": "AVAILABLE",
+      "specialties": ["MEDICAL_FIRST_RESPONDER", "TRAUMA_CARE"],
+      "equipment": ["AMBULANCE", "MEDICAL_KIT"],
+      "personnel_count": 4
+    },
+    {
+      "team_id": "TEAM-W01",
+      "team_name": "หน่วยกู้ภัยทางน้ำ เชียงใหม่",
+      "current_location": {
+        "latitude": 18.7900,
+        "longitude": 98.9900
+      },
+      "status": "AVAILABLE",
+      "specialties": ["WATER_RESCUE", "EVACUATION", "BOAT_OPERATION"],
+      "equipment": ["RUBBER_BOAT", "LIFE_JACKETS"],
+      "personnel_count": 5
+    },
+    {
+      "team_id": "TEAM-R03",
+      "team_name": "หน่วยกู้ภัยที่สูงและเชือก เชียงใหม่",
+      "current_location": {
+        "latitude": 18.7850,
+        "longitude": 98.9800
+      },
+      "status": "BUSY",
+      "specialties": ["ROPE_RESCUE", "HIGH_ANGLE_RESCUE"],
+      "equipment": ["ROPE_GEAR", "CLIMBING_HARNESS"],
+      "personnel_count": 4
+    }
+  ]

@@ -1,44 +1,31 @@
-import json
-import uuid
-import boto3
+# POST method for generate recommendation
+
 import os
-import hashlib
-from datetime import datetime
+import json
+import uuid   # use for generate new recommendation_id
+from datetime import datetime   # use for generate new recommendation
 from decimal import Decimal
+
+import boto3
 from boto3.dynamodb.conditions import Key
 
+# for external services
 from services.rescue_request_service import get_rescue_request
 from services.incident_service import get_incident
+
+from utils.error_response import format_error_response
+from utils.validator import is_valid_uuid
+from utils.hash import hash_body
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ["TABLE_NAME"])    #TABLE_NAME = "recommendations"
 
-def format_recommendation(item):
-    return {
-        "recommendation_id": item["recommendation_id"],
-        "request_id": item["request_id"],
-        "recommendation_status": item["recommendation_status"],
-        "confidence_score": float(item["confidence_score"]),
-        "ranked_teams": [
-            {
-                "team_id": t["team_id"],
-                "rank": t["rank"],
-                "total_score": float(t["total_score"]),
-                "score_breakdown": {
-                    "specialization_score": float(t["score_breakdown"]["specialization_score"]),
-                    "distance_score": float(t["score_breakdown"]["distance_score"]),
-                    "availability_score": float(t["score_breakdown"]["availability_score"]),
-                    "severity_weight": float(t["score_breakdown"]["severity_weight"]),
-                },
-                "explanation": t["explanation"]
-            }
-            for t in item.get("ranked_teams", [])
-        ],
-        "model_version": item["model_version"],
-        "evaluated_at": item["evaluated_at"]
-    }
+lambda_client = boto3.client('lambda')
 
-def format_create_recommendation(item):
+fixed_init_recommendation_status = "PENDING"   # Lifecycle: PENDING / CALCULATING / GENERATED / FAILED / EXPIRED
+
+
+def format_generate_recommendation(item):
     return {
         "recommendation_id": item["recommendation_id"],
         "request_id": item["request_id"],
@@ -47,57 +34,7 @@ def format_create_recommendation(item):
         "created_at": item["created_at"]
     }
 
-def build_error(status_code, code, message, trace_id, details=None):
-    return {
-        "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json"
-        },
-        "body": json.dumps({
-            "error": {
-                "code": code,
-                "message": message,
-                "trace_id": trace_id,
-                "details": details or []
-            }
-        })
-    }
-
-def decimal_to_float(obj):
-    if isinstance(obj, Decimal):
-        return float(obj)
-    raise TypeError
-
-def is_valid_uuid(val):
-    try:
-        uuid.UUID(val)
-        return True
-    except:
-        return False
-
-def hash_body(body):
-    return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
-
-
-def lambda_handler(event, context):
-    print(json.dumps(event))
-    path = event["rawPath"]     # "/v1/recommendations" ||| 
-    method = event["requestContext"]["http"]["method"]     # "POST" ||| "GET"
-    print(f"Received {method} request for path: {path}")
-
-    if path == "/v1/recommendations" and method == "POST":
-        return create_recommendation(event)
-
-    if path.startswith("/v1/recommendations/") and method == "GET":
-        return get_recommendation_by_request_id(event)
-
-    return {
-        "statusCode": 404,
-        "body": "Not Found"
-    }
-
-
-def create_recommendation(event):
+def generate_recommendation(event):
     trace_id = event["requestContext"]["requestId"]
     print(f"[{trace_id}] START --- POST /v1/recommendations")
 
@@ -113,7 +50,7 @@ def create_recommendation(event):
         ## Validation Header Error: 400 Bad Request
         if not idempotency_key:
             print(f"[{trace_id}] 400 VALIDATION_HEADER_ERROR - Idempotency-Key is required")
-            return build_error(
+            return format_error_response(
                 400,
                 "VALIDATION_HEADER_ERROR",
                 "Idempotency-Key is required",
@@ -124,14 +61,14 @@ def create_recommendation(event):
         ## Validation Header Error: 400 Bad Request
         if not is_valid_uuid(idempotency_key):
             print(f"[{trace_id}] 400 VALIDATION_HEADER_ERROR - Invalid idempotency_key format")
-            return build_error(
+            return format_error_response(
                 400,
                 "VALIDATION_HEADER_ERROR",
                 "Invalid idempotency_key format - Idempotency-Key must be a valid UUID",
                 trace_id,
                 [{"field": "idempotency_key", "issue": "invalid_format"}]
             )
-        
+
         # Check if the idempotency key is already used
         print(f"[{trace_id}] Checking for existing recommendation with idempotency key: {idempotency_key}")
         response = table.query(
@@ -146,7 +83,7 @@ def create_recommendation(event):
         ## Error: 500 INTERNAL_SERVER_ERROR
         if len(items) > 1:
             print(f"[{trace_id}] 500 INTERNAL_SERVER_ERROR - Multiple items found with same idempotency key")
-            return build_error(
+            return format_error_response(
                 500,
                 "INTERNAL_SERVER_ERROR",
                 "Multiple recommendations found with same idempotency key",
@@ -158,7 +95,7 @@ def create_recommendation(event):
             existing = items[0]
             if existing["request_hash"] != hash_body(body):
                 print(f"[{trace_id}] 409 CONFLICT - Idempotency-Key already used with different payload")
-                return build_error(
+                return format_error_response(
                     409,
                     "IDEMPOTENCY_KEY_REUSE_WITH_DIFFERENT_PAYLOAD",
                     "Same Idempotency-Key used with different request body",
@@ -167,13 +104,13 @@ def create_recommendation(event):
 
             ## 200 Success - Key same and body same
             print(f"[{trace_id}] 200 Success - Idempotent replay")
-            response_item = format_create_recommendation(items[0])
+            response_item = format_generate_recommendation(items[0])
             return {
                 "statusCode": 200,
                 "headers": {
                     "Content-Type": "application/json"
                 },
-                "body": json.dumps(response_item, default=decimal_to_float)
+                "body": json.dumps(response_item)
             }
 
 
@@ -185,7 +122,7 @@ def create_recommendation(event):
         ## Validation Error: 400 Bad Request
         if not request_id:
             print(f"[{trace_id}] 400 VALIDATION_ERROR - request_id is required")
-            return build_error(
+            return format_error_response(
                 400,
                 "VALIDATION_ERROR",
                 "request_id is required",
@@ -203,15 +140,15 @@ def create_recommendation(event):
         
         if existing_items:
             print(f"[{trace_id}] 200 Success - Recommendation already exists for request: {request_id}")
-            response_item = format_create_recommendation(existing_items[0])
+            response_item = format_generate_recommendation(existing_items[0])
             return {
                 "statusCode": 200,
                 "headers": {
                     "Content-Type": "application/json"
                 },
-                "body": json.dumps(response_item, default=decimal_to_float)
+                "body": json.dumps(response_item)
             }
-
+        
 
         # Call external service (mock/real) 
         rescue_data = get_rescue_request(request_id, trace_id)
@@ -220,7 +157,7 @@ def create_recommendation(event):
         ## Error: 404 Not Found
         if not rescue_data:
             print(f"[{trace_id}] 404 REFERENCE_NOT_FOUND - Rescue request not found for ID: {request_id}")
-            return build_error(
+            return format_error_response(
                 404,
                 "REFERENCE_NOT_FOUND",
                 "request_id not found",
@@ -241,104 +178,59 @@ def create_recommendation(event):
             "recommendation_id": recommendation_id,
             "request_id": request_id,
             "incident_id": incident_id,
-            "recommendation_status": "GENERATED",
-            "confidence_score": Decimal("4.0"),
-            "ranked_teams": [
-                {
-                    "team_id": "TEAM-01",
-                    "rank": 1,
-                    "total_score": Decimal("87.5"),
-                    "score_breakdown": {
-                        "specialization_score": Decimal("30.0"),
-                        "distance_score": Decimal("25.0"),
-                        "availability_score": Decimal("20.0"),
-                        "severity_weight": Decimal("12.5")
-                    },
-                    "explanation": "Team specialization matches fire response"
-                }
-            ],
-            "model_version": "v1.0.0",
+            "recommendation_status": fixed_init_recommendation_status,
             "created_at": datetime.utcnow().isoformat(timespec='milliseconds') + "Z",
-            "evaluated_at": datetime.utcnow().isoformat(timespec='milliseconds') + "Z",
             "idempotency_key": idempotency_key,
             "request_hash": hash_body(body)
         }
 
         table.put_item(Item=item)
 
-        response_item = format_create_recommendation(item)
+        # Asynchronous Invoke ไปยัง Lambda B (Scoring Worker)
+        worker_payload = {
+            "recommendation_id": recommendation_id,
+            "request_id": request_id,
+            "incident_id": incident_id,
+            "trace_id": trace_id # ส่ง trace_id ไปด้วยเพื่อให้ไล่ log ง่าย
+        }
 
-        ## Success: 201 Created
-        print(f"[{trace_id}] 201 Created - Created recommendation with ID: {recommendation_id}")
+        try:
+            # อย่าลืมเพิ่ม WORKER_LAMBDA_NAME ใน Environment Variables ของ Lambda A ด้วย
+            worker_lambda_name = os.environ.get("WORKER_LAMBDA_NAME") 
+            
+            print(f"[{trace_id}] Asynchronously invoking worker lambda: {worker_lambda_name}")
+            lambda_client.invoke(
+                FunctionName=worker_lambda_name,
+                InvocationType='Event', # สำคัญมาก 'Event' แปลว่า Fire and Forget (Async)
+                Payload=json.dumps(worker_payload)
+            )
+        except Exception as invoke_err:
+            # แค่พิมพ์ Log ไว้ แต่ไม่บล็อกการทำงาน เพราะถือว่ารับงานลง DB แล้ว
+            # (ในอนาคตอาจจะมีกลไก Retry ถ้า Invoke พลาด)
+            print(f"[{trace_id}] WARNING - Failed to invoke worker lambda: {str(invoke_err)}")
+        
+        print(f"[{trace_id}] This is NOT a failure. Recommendation {recommendation_id} is already saved in DB.")
+
+
+        response_item = format_generate_recommendation(item)
+
+        ## Success: 202 Accepted
+        print(f"[{trace_id}] 202 Accepted - Queued recommendation with ID: {recommendation_id}")
 
         return {
-            "statusCode": 201,
+            "statusCode": 202,
             "headers": {
                 "Content-Type": "application/json"
             },
-            "body": json.dumps(response_item, default=decimal_to_float)
+            "body": json.dumps(response_item)
         }
 
     ## Error: 500 INTERNAL_SERVER_ERROR
     except Exception as e:
         print(f"[{trace_id}] 500 INTERNAL_SERVER_ERROR - Error: {str(e)}")
-        return build_error(
+        return format_error_response(
             500,
             "INTERNAL_SERVER_ERROR",
             "Failed to create recommendation",
-            trace_id
-        )
-
-
-def get_recommendation_by_request_id(event):
-    trace_id = event["requestContext"]["requestId"]
-    print(f"[{trace_id}] START --- GET /v1/recommendations/{event['pathParameters']['request_id']}")
-
-    try:
-        request_id = event["pathParameters"]["request_id"]
-    
-        #print(f"Fetching recommendations for request_id: {request_id}")
-
-        response = table.query(
-            IndexName="request_id-index",
-            KeyConditionExpression=Key("request_id").eq(request_id)
-        )
-
-        items = response.get("Items", [])
-
-        ## Error: 404 Not Found
-        if not items:
-            print(f"[{trace_id}] 404 REFERENCE_NOT_FOUND - No recommendation found for request_id: {request_id}")
-            return build_error(
-                404,
-                "REFERENCE_NOT_FOUND",
-                "recommendation not found for request_id",
-                trace_id
-            )
-
-        #print("Items:", items)
-        #print(f"Found {len(items)} recommendation(s) for request_id: {request_id}")
-
-        item = format_recommendation(items[0])
-        print(f"[{trace_id}] Data: {json.dumps(item, default=decimal_to_float)}")
-        
-        ## Success: 200 Success
-        print(f"[{trace_id}] 200 Success - Get recommendation success for request_id: {request_id}")
-
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps(item, default=decimal_to_float)
-        }
-
-    ## Error: 500 INTERNAL_SERVER_ERROR
-    except Exception as e:
-        print(f"[{trace_id}] 500 INTERNAL_SERVER_ERROR - Error: {str(e)}")
-        return build_error(
-            500,
-            "INTERNAL_SERVER_ERROR",
-            "Fail to get recommendation detail",
             trace_id
         )

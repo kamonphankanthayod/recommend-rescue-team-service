@@ -4,17 +4,17 @@
             "requestId": "REQ-8812-9901",
             "incidentId": "019C774D-1AC5-75BB-AE95-5CD4AEB8925B",
             "requestType": "fire_rescue",
-            "description": "ติดอยู่ชั้น 1",
+            "description": "ไฟไหม้ลามมาถึงตึก ติดอยู่ชั้น 1 ออกไม่ได้",
             "peopleCount": 4,
             "specialNeeds": ["bedridden"],
             "location": {
-            "latitude": 18.7883,
-            "longitude": 98.9853,
-            "locationDetails": { "floor": "1", "landmark": "หน้าโรงเรียน" },
-            "province": "เชียงใหม่",
-            "district": "เมืองเชียงใหม่",
-            "subdistrict": "สุเทพ",
-            "addressLine": "123 ม.2 ถ.ห้วยแก้ว"
+            "latitude": 14.0650,
+            "longitude": 100.6005,
+            "locationDetails": { "floor": "1", "landmark": "หอพักใกล้ TU Dome" },
+            "province": "ปทุมธานี",
+            "district": "คลองหลวง",
+            "subdistrict": "คลองหนึ่ง",
+            "addressLine": "99 หมู่ 18"
             },
             "contact": {
             "contactName": "สมชาย",
@@ -25,7 +25,7 @@
             "lastCitizenUpdateAt": "2026-03-03T08:10:00Z"
         },
         "current": {
-            "status": "ASSIGNED",
+            "status": "PENDING",
             "priority_score": 85,
             "priority_level": "High",
             "assignedUnitId": "UNIT-CAR-05",
@@ -41,12 +41,12 @@
             "requestId": "REQ-8812-9902",
             "incidentId": "020C774D-1AC5-75BB-AE95-5CD4AEB8925B",
             "requestType": "flood_rescue",
-            "description": "ติดอยู่ชั้น 1",
+            "description": "น้ำท่วมสูงถึงเอว ติดอยู่ชั้น 1",
             "peopleCount": 5,
-            "specialNeeds": ["bedridden"],
+            "specialNeeds": ["wheelchair"],
             "location": {
-            "latitude": 100.7883,
-            "longitude": 198.9853,
+            "latitude": 18.7885,
+            "longitude": 98.9855,
             "locationDetails": { "floor": "1", "landmark": "หน้าโรงเรียน" },
             "province": "เชียงใหม่",
             "district": "เมืองเชียงใหม่",
@@ -54,15 +54,15 @@
             "addressLine": "123 ม.2 ถ.ห้วยแก้ว"
             },
             "contact": {
-            "contactName": "สมชาย",
-            "contactPhoneMasked": "081***678"
+            "contactName": "มานะ",
+            "contactPhoneMasked": "080***002"
             },
             "sourceChannel": "MOBILE_APP",
             "submittedAt": "2026-02-21T10:30:00Z",
             "lastCitizenUpdateAt": "2026-03-03T08:10:00Z"
         },
         "current": {
-            "status": "ASSIGNED",
+            "status": "PENDING",
             "priority_score": 90,
             "priority_level": "High",
             "assignedUnitId": "UNIT-BOAT-05",
@@ -78,28 +78,28 @@
             "requestId": "REQ-8812-9901",
             "incidentId": "019C774D-1AC5-75BB-AE95-5CD4AEB8925B",
             "requestType": "fire_rescue",
-            "description": "ติดอยู่ชั้น 3",
+            "description": "ควันไฟหนาแน่น ติดอยู่ชั้น 3",
             "peopleCount": 7,
-            "specialNeeds": ["bedridden"],
+            "specialNeeds": ["elderly"],
             "location": {
-            "latitude": 18.7883,
-            "longitude": 98.9853,
-            "locationDetails": { "floor": "3", "landmark": "หน้าโรงเรียน" },
-            "province": "เชียงใหม่",
-            "district": "เมืองเชียงใหม่",
-            "subdistrict": "สุเทพ",
-            "addressLine": "123 ม.2 ถ.ห้วยแก้ว"
+            "latitude": 14.0652,
+            "longitude": 100.6006,
+            "locationDetails": { "floor": "3", "landmark": "หอพักใกล้ TU Dome" },
+            "province": "ปทุมธานี",
+            "district": "คลองหลวง",
+            "subdistrict": "คลองหนึ่ง",
+            "addressLine": "99 หมู่ 18"
             },
             "contact": {
-            "contactName": "สมชาย",
-            "contactPhoneMasked": "081***678"
+            "contactName": "สมศักดิ์",
+            "contactPhoneMasked": "087***123"
             },
             "sourceChannel": "MOBILE_APP",
             "submittedAt": "2026-02-21T10:30:00Z",
             "lastCitizenUpdateAt": "2026-03-03T08:10:00Z"
         },
         "current": {
-            "status": "ASSIGNED",
+            "status": "PENDING",
             "priority_score": 85,
             "priority_level": "High",
             "assignedUnitId": "UNIT-CAR-05",
@@ -119,8 +119,8 @@
             "peopleCount": 5,
             "specialNeeds": ["bedridden"],
             "location": {
-            "latitude": 100.7883,
-            "longitude": 198.9853,
+            "latitude": 18.6685,
+            "longitude": 98.9853,
             "locationDetails": { "floor": "4", "landmark": "หน้าโรงเรียน" },
             "province": "เชียงใหม่",
             "district": "เมืองเชียงใหม่",
@@ -128,8 +128,8 @@
             "addressLine": "123 ม.2 ถ.ห้วยแก้ว"
             },
             "contact": {
-            "contactName": "สมชาย",
-            "contactPhoneMasked": "081***678"
+            "contactName": "สมชายสี่",
+            "contactPhoneMasked": "084***444"
             },
             "sourceChannel": "MOBILE_APP",
             "submittedAt": "2026-02-21T10:30:00Z",

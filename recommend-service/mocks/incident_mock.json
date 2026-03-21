@@ -7,7 +7,7 @@
         "exact_location_description": "TU Dome's outdoor parking lot",
         "impact_level": 3,
         "priority": "High",
-        "status": "DISPATCHED",
+        "status": "IN_PROGRESS",
         "reported_by": "ReportVerifyService",
         "created_at": "2026-02-22T00:00:00Z",
         "updated_at": "2026-02-22T00:01:04Z",
@@ -20,7 +20,7 @@
             {
                 "time": "2026-02-22T00:01:04Z ",
                 "event": "Status Changed",
-                "detail": "DISPATCHED"
+                "detail": "IN_PROGRESS"
             }
         ]
     },
@@ -32,7 +32,7 @@
         "exact_location_description": "Zeven's outdoor parking lot",
         "impact_level": 4,
         "priority": "High",
-        "status": "DISPATCHED",
+        "status": "IN_PROGRESS",
         "reported_by": "ReportVerifyService",
         "created_at": "2026-02-22T00:00:00Z",
         "updated_at": "2026-02-22T00:01:04Z",
@@ -45,7 +45,7 @@
             {
                 "time": "2026-02-22T00:01:04Z ",
                 "event": "Status Changed",
-                "detail": "DISPATCHED"
+                "detail": "IN_PROGRESS"
             }
         ]
     }
