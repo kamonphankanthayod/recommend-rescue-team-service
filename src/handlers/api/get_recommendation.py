@@ -60,8 +60,27 @@ def format_get_recommendation(item):
     }
 
 def get_recommendation_by_request_id(event):
-    trace_id = event["requestContext"]["requestId"]
-    request_id = event.get("pathParameters", {}).get("request_id")
+    # HttpApi แบบ $default จะซ่อน requestId ไว้ใน requestContext
+    req_context = event.get("requestContext", {})
+    trace_id = req_context.get("requestId", "UNKNOWN_TRACE_ID")
+    
+    # -------------------------------------------------------------
+    # การดึง request_id รองรับทั้งแบบระบุ Path และแบบ $default
+    # -------------------------------------------------------------
+    request_id = None
+    path_params = event.get("pathParameters")
+    
+    if path_params and "request_id" in path_params:
+        # กรณีตั้งค่า Route แบบระบุตัวแปรใน API Gateway
+        request_id = path_params["request_id"]
+    else:
+        # กรณีใช้ $default Route ให้ตัดคำจาก rawPath แทน
+        raw_path = event.get("rawPath", "") # เช่น "/v1/recommendations/219d078a-5c63-4387-a3bf-6f61e2c9c6aa"
+        parts = raw_path.strip("/").split("/") # จะได้ ['v1', 'recommendations', '219d078a-5c63-4387-a3bf-6f61e2c9c6aa']
+        
+        # ตรวจสอบว่า path ถูกต้องและมีตำแหน่งของ request_id
+        if len(parts) >= 4 and parts[-2] == "recommendations":
+            request_id = parts[-1]
 
     print(f"[{trace_id}] START --- GET /v1/recommendations/{request_id}")
 

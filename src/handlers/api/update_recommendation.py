@@ -17,8 +17,27 @@ ALLOWED_UPDATE_STATUSES = ["ACCEPTED", "REJECTED"]
 
 
 def update_recommendation_status(event):
-    trace_id = event["requestContext"]["requestId"]
-    recommendation_id = event.get("pathParameters", {}).get("recommendation_id")
+    # HttpApi แบบ $default จะซ่อน requestId ไว้ใน requestContext
+    req_context = event.get("requestContext", {})
+    trace_id = req_context.get("requestId", "UNKNOWN_TRACE_ID")
+    
+    # -------------------------------------------------------------
+    # การดึง recommendation_id รองรับทั้งแบบระบุ Path และแบบ $default
+    # -------------------------------------------------------------
+    recommendation_id = None
+    path_params = event.get("pathParameters")
+    
+    if path_params and "recommendation_id" in path_params:
+        # กรณีตั้งค่า Route แบบระบุตัวแปรใน API Gateway
+        recommendation_id = path_params["recommendation_id"]
+    else:
+        # กรณีใช้ $default Route ให้ตัดคำจาก rawPath แทน
+        raw_path = event.get("rawPath", "") # เช่น "/v1/recommendations/219d078a-5c63-4387-a3bf-6f61e2c9c6aa"
+        parts = raw_path.strip("/").split("/") # จะได้ ['v1', 'recommendations', '219d078a-5c63-4387-a3bf-6f61e2c9c6aa', 'status']
+        
+        # ตรวจสอบว่า path ถูกต้องและมีตำแหน่งของ recommendation_id
+        if len(parts) >= 4 and parts[-3] == "recommendations":
+            recommendation_id = parts[-2]
     
     print(f"[{trace_id}] START --- PATCH /v1/recommendations/{recommendation_id}/status")
 

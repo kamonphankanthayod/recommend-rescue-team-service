@@ -15,10 +15,27 @@ VALID_STATUS = ["AVAILABLE", "BUSY", "OFFLINE"]
 
 
 def update_team_status(event):
-    trace_id = event["requestContext"]["requestId"]
-
-    path_params = event.get("pathParameters") or {}
-    team_id = path_params.get("team_id")
+    # HttpApi แบบ $default จะซ่อน requestId ไว้ใน requestContext
+    req_context = event.get("requestContext", {})
+    trace_id = req_context.get("requestId", "UNKNOWN_TRACE_ID")
+    
+    # -------------------------------------------------------------
+    # การดึง team_id รองรับทั้งแบบระบุ Path และแบบ $default
+    # -------------------------------------------------------------
+    team_id = None
+    path_params = event.get("pathParameters")
+    
+    if path_params and "team_id" in path_params:
+        # กรณีตั้งค่า Route แบบระบุตัวแปรใน API Gateway
+        team_id = path_params["team_id"]
+    else:
+        # กรณีใช้ $default Route ให้ตัดคำจาก rawPath แทน
+        raw_path = event.get("rawPath", "") # เช่น "/v1/teams/TEAM-902919"
+        parts = raw_path.strip("/").split("/") # จะได้ ['v1', 'teams', 'TEAM-902919', 'status']
+        
+        # ตรวจสอบว่า path ถูกต้องและมีตำแหน่งของ team_id
+        if len(parts) >= 4 and parts[-3] == "teams":
+            team_id = parts[-2]
 
     print(f"[{trace_id}] START --- PATCH /v1/teams/{team_id}/status")
 
