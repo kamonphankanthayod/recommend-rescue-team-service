@@ -32,7 +32,7 @@ def delete_recommendation(event):
         parts = raw_path.strip("/").split("/") # จะได้ ['v1', 'recommendations', '219d078a-5c63-4387-a3bf-6f61e2c9c6aa']
         
         # ตรวจสอบว่า path ถูกต้องและมีตำแหน่งของ recommendation_id
-        if len(parts) >= 4 and parts[-2] == "recommendations":
+        if len(parts) >= 3 and parts[-2] == "recommendations":
             recommendation_id = parts[-1]
 
     print(f"[{trace_id}] START --- DELETE /v1/recommendations/{recommendation_id}")

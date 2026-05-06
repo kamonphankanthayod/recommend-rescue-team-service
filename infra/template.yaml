@@ -110,6 +110,14 @@ Resources:
             Condition:
               ArnEquals:
                 aws:SourceArn: "arn:aws:sns:us-east-1:955468203539:rescue-prioritization-events-v1"
+  
+  RescueRequestQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      Endpoint: !GetAtt RescueRequestQueue.Arn
+      Region: us-east-1
+      TopicArn: "arn:aws:sns:us-east-1:955468203539:rescue-prioritization-events-v1"
 
   # --- SQS 2: ของเราเองเอาไว้ Test Worker ---
   WorkerTestDLQ:

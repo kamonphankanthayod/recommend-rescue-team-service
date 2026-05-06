@@ -177,4 +177,4 @@ def generate_recommendation(event):
             ExpressionAttributeValues={":s": "FAILED"}
         )
 
-    print(f"[{trace_id}] DONE generate_recommendation")
+    print(f"[{trace_id}] DONE handler/consumer/generate_recommendation.py")

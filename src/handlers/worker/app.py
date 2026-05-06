@@ -11,8 +11,8 @@ from boto3.dynamodb.conditions import Key
 sns = boto3.client("sns")
 dynamodb = boto3.resource('dynamodb')
 
-table = dynamodb.Table(os.environ["RECOMMENDATION_TABLE_NAME"])
-team_table = dynamodb.Table(os.environ["RESCUE_TEAM_TABLE_NAME"])
+table = dynamodb.Table(os.environ["REC_TABLE_NAME"])
+team_table = dynamodb.Table(os.environ["TEAM_TABLE_NAME"])
 
 
 # ---------------------------------------------------------
