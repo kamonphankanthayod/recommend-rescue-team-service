@@ -1,4 +1,4 @@
-# import json
+import json
 
 from handlers.api.get_available_teams import get_available_teams
 from handlers.api.create_team import create_team
@@ -22,6 +22,17 @@ def lambda_handler(event, context):
 
     print(f"[{trace_id}] Received {method} request for path: {path}")
 
+    # --- จัดการ CORS Preflight ---
+    if method == "OPTIONS":
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type,Authorization"
+            }
+        }
+    
     # AUTHORIZATION MIDDLEWARE
     is_authorized, auth_error_msg = authorize_dispatcher(event)
     if not is_authorized:
