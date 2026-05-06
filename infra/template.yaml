@@ -15,6 +15,27 @@ Globals:
         SNS_TOPIC_ARN: !Ref RecommendationGeneratedTopic
 
 Resources:
+  # --- 0. API Gateway (HttpApi) พร้อม CORS ---
+  RescueTeamHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowMethods:
+          - GET
+          - POST
+          - PATCH
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - X-Amz-Date
+          - X-Api-Key
+          - X-Amz-Security-Token
+        AllowOrigins:
+          - "*" # ในอนาคตควรเปลี่ยนเป็น Domain ของ Frontend เพื่อความปลอดภัย
+      StageName: "$default" # ใช้ $default เพื่อให้ URL ไม่ต้องมี /Prod หรือ /Stage
+
   # ==========================================
   # 1. DATABASES (DynamoDB)
   # ==========================================
@@ -196,8 +217,9 @@ Resources:
         ApiGatewayEvent:
           Type: HttpApi
           Properties:
-            Path: $default
+            Path: /v1/{proxy+} # ปรับให้รองรับ path ที่หลากหลายขึ้น
             Method: ANY
+            ApiId: !Ref RescueTeamHttpApi # เชื่อมต่อกับ HttpApi ที่เราตั้งค่า CORS ไว้
   # --- CloudWatch Log Group: ตั้งค่า Retention 7 วัน ---
   # ชื่อ Log Group ต้องเป็น /aws/lambda/<ชื่อฟังก์ชัน>
   RescueTeamApiLogGroup:
