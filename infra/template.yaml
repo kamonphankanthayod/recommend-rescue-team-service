@@ -1,0 +1,283 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Rescue Team Service - Full Event-Driven Architecture
+
+Globals:
+  Function:
+    Runtime: python3.9
+    Timeout: 30
+    MemorySize: 128
+    Environment:
+      Variables:
+        TEAM_TABLE_NAME: !Ref RescueTeamsTable
+        REC_TABLE_NAME: !Ref RecommendationsTable
+        # WORKER_LAMBDA_NAME: !Ref ScoringWorker
+        SNS_TOPIC_ARN: !Ref RecommendationGeneratedTopic
+
+Resources:
+  # ==========================================
+  # 1. DATABASES (DynamoDB)
+  # ==========================================
+
+  # --- 1. Database: Rescue Teams ---
+  RescueTeamsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: rescue_teams_table
+      AttributeDefinitions:
+        - AttributeName: team_id
+          AttributeType: S
+        - AttributeName: team_status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: team_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: team_status-index
+          KeySchema:
+            - AttributeName: team_status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  # --- 2. Database: Recommendations ---
+  RecommendationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: recommendations_table
+      AttributeDefinitions:
+        - AttributeName: recommendation_id
+          AttributeType: S
+        - AttributeName: idempotency_key
+          AttributeType: S
+        - AttributeName: request_id
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: recommendation_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: idempotency_key-index
+          KeySchema:
+            - AttributeName: idempotency_key
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: request_id-index
+          KeySchema:
+            - AttributeName: request_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  # ==========================================
+  # 2. MESSAGING (SNS, SQS & DLQ)
+  # ==========================================
+
+  # --- SNS Topic (ของเราส่งออก) ---
+  RecommendationGeneratedTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: recommendation-generated-topic
+
+  # --- SQS 1: รับจากเพื่อน (Rescue Request Prioritization Service ) ---
+  RescueRequestDLQ:
+    Type: AWS::SQS::Queue
+  RescueRequestQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: rescue_request_queue
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RescueRequestDLQ.Arn
+        maxReceiveCount: 3
+  
+  RescueRequestQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref RescueRequestQueue]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: { Service: "sns.amazonaws.com" }
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt RescueRequestQueue.Arn
+            # ARN SNS ของเพื่อนที่ส่งมา (Rescue Request Prioritization Service)
+            Condition:
+              ArnEquals:
+                aws:SourceArn: "arn:aws:sns:us-east-1:955468203539:rescue-prioritization-events-v1"
+
+  # --- SQS 2: ของเราเองเอาไว้ Test Worker ---
+  WorkerTestDLQ:
+    Type: AWS::SQS::Queue
+  WorkerTestQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: worker_test_queue
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt WorkerTestDLQ.Arn
+        maxReceiveCount: 3
+        
+  WorkerTestQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref WorkerTestQueue]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: { Service: "sns.amazonaws.com" }
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt WorkerTestQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref RecommendationGeneratedTopic
+
+  # จับ SQS 2 ของเราไป Subscribe SNS ของเราเอง
+  WorkerTestQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      Endpoint: !GetAtt WorkerTestQueue.Arn
+      TopicArn: !Ref RecommendationGeneratedTopic
+
+  # --- SQS 3: รับจากเพื่อน (ManageDispatch) ---
+  DispatchCompleteDLQ:
+    Type: AWS::SQS::Queue
+  DispatchCompleteQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: dispatch_complete_queue
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DispatchCompleteDLQ.Arn
+        maxReceiveCount: 3
+
+  DispatchCompleteQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref DispatchCompleteQueue]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: { Service: "sns.amazonaws.com" }
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt DispatchCompleteQueue.Arn
+            # ARN SNS ของเพื่อนที่ส่งมา (ManageDispatch Service)
+            # Condition:
+            #   ArnEquals:
+            #     aws:SourceArn: "arn:aws:sns:us-east-1:955468203539:manage-dispatch-events-v1"
+
+  # ==========================================
+  # 3. LAMBDA FUNCTIONS & LOG GROUPS
+  # ==========================================
+
+  # --- 1. Lambda: API Main ---
+  RescueTeamApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/
+      Handler: handlers.api.app.lambda_handler
+      # SAM จะสร้าง IAM Role ให้เองตาม Policies ด้านล่าง
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref RescueTeamsTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref RecommendationsTable }
+      Events:
+        ApiGatewayEvent:
+          Type: HttpApi
+          Properties:
+            Path: $default
+            Method: ANY
+  # --- CloudWatch Log Group: ตั้งค่า Retention 7 วัน ---
+  # ชื่อ Log Group ต้องเป็น /aws/lambda/<ชื่อฟังก์ชัน>
+  RescueTeamApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${RescueTeamApiFunction}"
+      RetentionInDays: 7            # ลบ Log อัตโนมัติทุก 7 วัน
+
+
+  # --- Lambda 2: RecommendationConsumer ---
+  RecommendationConsumer:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/
+      Handler: handlers.consumer.app.lambda_handler
+      Environment:
+        Variables:
+          WORKER_LAMBDA_NAME: !Ref ScoringWorker
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt RescueRequestQueue.Arn
+            BatchSize: 10
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref RecommendationsTable }
+        # ให้สิทธิ์ไป Trigger Lambda Worker (Lambda 3)
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ScoringWorker
+  RecommendationConsumerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${RecommendationConsumer}"
+      RetentionInDays: 7
+
+  # --- Lambda 3: ScoringWorker ---
+  ScoringWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/
+      Handler: handlers.worker.app.lambda_handler
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref RecommendationGeneratedTopic
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref RescueTeamsTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref RecommendationsTable }
+        - SNSPublishMessagePolicy: { TopicName: !GetAtt RecommendationGeneratedTopic.TopicName }
+  ScoringWorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ScoringWorker}"
+      RetentionInDays: 7
+
+  # --- Lambda 4: WorkerTestConsumer ---
+  WorkerTestConsumer:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/
+      Handler: handlers.testconsumer.app.test_worker_handler # ปรับ path ให้ตรงกับโค้ดของคุณ
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt WorkerTestQueue.Arn
+            BatchSize: 10
+  WorkerTestConsumerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${WorkerTestConsumer}"
+      RetentionInDays: 7
+
+  # --- Lambda 5: DispatchStatusUpdater ---
+  DispatchStatusUpdater:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/
+      Handler: handlers.dispatchconsumer.app.dispatch_handler # ปรับ path ให้ตรงกับโค้ดของคุณ
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt DispatchCompleteQueue.Arn
+            BatchSize: 10
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref RescueTeamsTable }
+  DispatchStatusUpdaterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${DispatchStatusUpdater}"
+      RetentionInDays: 7
