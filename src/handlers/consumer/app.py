@@ -109,7 +109,7 @@ def lambda_handler(event, context):
             # 4. Call business logic
             generate_recommendation(sns_message)
 
-            print(f"[{trace_id}] SUCCESS - lambda_function.py")
+            print(f"[{trace_id}] SUCCESS - handler/consumer/app.py")
 
         except ValidationError as e:
             print(f"[VALIDATION ERROR] {str(e)}")

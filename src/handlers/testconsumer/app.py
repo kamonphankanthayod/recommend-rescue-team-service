@@ -1,6 +1,6 @@
 import json
 
-def lambda_handler(event, context):
+def test_worker_handler(event, context):
     # TODO implement
     # print("RAW EVENT:", json.dumps(event))
 
