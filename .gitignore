@@ -1,0 +1,25 @@
+# .gitignore
+# SAM CLI temporary build folder
+.aws-sam/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local environment and IDE settings
+.env
+.venv
+env/
+venv/
+.vscode/
+.idea/
+
+# SAM config containing local preferences
+# (ถ้าต้องการให้เพื่อนร่วมทีมใช้ค่าเดียวกันไม่ต้องใส่ในนี้ แต่แนะนำให้แยกไว้นอก git)
+infra/samconfig.toml
+samconfig.toml
+
+# OS specific files
+.DS_Store
+Thumbs.db

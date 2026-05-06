@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Rescue Team Service - Core API and Database
+
+Globals:
+  Function:
+    Runtime: python3.9
+    Timeout: 30
+    MemorySize: 128
+    Environment:
+      Variables:
+        TEAM_TABLE_NAME: !Ref RescueTeamsTable
+        REC_TABLE_NAME: !Ref RecommendationsTable
+        # WORKER_LAMBDA_NAME: !Ref ScoringWorkerFunction
+
+Resources:
+  # --- 1. Database: Rescue Teams ---
+  RescueTeamsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: rescue_teams_table
+      AttributeDefinitions:
+        - AttributeName: team_id
+          AttributeType: S
+        - AttributeName: team_status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: team_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: team_status-index
+          KeySchema:
+            - AttributeName: team_status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  # --- 2. Database: Recommendations ---
+  RecommendationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: recommendations_table
+      AttributeDefinitions:
+        - AttributeName: recommendation_id
+          AttributeType: S
+        - AttributeName: idempotency_key
+          AttributeType: S
+        - AttributeName: request_id
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: recommendation_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: idempotency_key-index
+          KeySchema:
+            - AttributeName: idempotency_key
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: request_id-index
+          KeySchema:
+            - AttributeName: request_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  # --- 3. Lambda: API Main ---
+  RescueTeamApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/
+      Handler: handlers.api.app.lambda_handler
+      # SAM จะสร้าง IAM Role ให้เองตาม Policies ด้านล่าง
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RescueTeamsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecommendationsTable
+      Events:
+        ApiGatewayEvent:
+          Type: HttpApi
+          Properties:
+            Path: $default
+            Method: ANY
+    
+  # --- CloudWatch Log Group: ตั้งค่า Retention 7 วัน ---
+  # ชื่อ Log Group ต้องเป็น /aws/lambda/<ชื่อฟังก์ชัน>
+  RescueTeamApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${RescueTeamApiFunction}"
+      RetentionInDays: 7            # ลบ Log อัตโนมัติทุก 7 วัน
