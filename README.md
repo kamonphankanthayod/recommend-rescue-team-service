@@ -64,7 +64,7 @@ The service exposes the following internal endpoints via API Gateway for adminis
 - DELETE /v1/teams/{team_id} - Remove a rescue team
 
 **Recommendations:**
-- GET /v1/recommendations/{recommendation_id} - Retrieve a specific recommendation result
+- GET /v1/recommendations/{request_id} - Retrieve a specific recommendation result
 - PATCH /v1/recommendations/{recommendation_id} - Update recommendation state
 - DELETE /v1/recommendations/{recommendation_id} - Remove a recommendation record
 
