@@ -1,4 +1,4 @@
-# Recommend Rescue Team Service
+# Rescue Team Service
 
 A serverless, event-driven microservice designed to manage rescue team profiles, monitor their availability, and provide automated team recommendations during disaster response scenarios. This project is built using Python and deployed via AWS Serverless Application Model (AWS SAM).
 
