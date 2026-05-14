@@ -4,7 +4,7 @@ Description: Rescue Team Service - Full Event-Driven Architecture
 
 Globals:
   Function:
-    Runtime: python3.9
+    Runtime: python3.10
     Timeout: 30
     MemorySize: 128
     Environment:
@@ -279,7 +279,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../src/
-      Handler: handlers.testconsumer.app.test_worker_handler # ปรับ path ให้ตรงกับโค้ดของคุณ
+      Handler: handlers.testconsumer.app.test_worker_handler
       Events:
         SQSEvent:
           Type: SQS
@@ -297,7 +297,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../src/
-      Handler: handlers.dispatchconsumer.app.dispatch_handler # ปรับ path ให้ตรงกับโค้ดของคุณ
+      Handler: handlers.dispatchconsumer.app.dispatch_handler
       Events:
         SQSEvent:
           Type: SQS
@@ -311,3 +311,39 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${DispatchStatusUpdater}"
       RetentionInDays: 7
+
+  # ==========================================
+  # 4. MONITORING & ALARMS (แจ้งเตือน DLQ)
+  # ==========================================
+
+  # --- SNS Topic สำหรับส่ง Email ---
+  DLQAlarmNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: worker-test-dlq-alarm-topic
+
+  # --- Subscription ผูก Email เข้ากับ Topic ---
+  DLQAlarmEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: "kamonphan.main@gmail.com"
+      TopicArn: !Ref DLQAlarmNotificationTopic
+
+  # --- CloudWatch Alarm จับตาดู WorkerTestDLQ ---
+  WorkerTestDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Alert when messages are visible in WorkerTestDLQ"
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt WorkerTestDLQ.QueueName
+      AlarmActions:
+        - !Ref DLQAlarmNotificationTopic   
