@@ -4,7 +4,7 @@ Description: Rescue Team Service - Full Event-Driven Architecture
 
 Globals:
   Function:
-    Runtime: python3.9
+    Runtime: python3.10
     Timeout: 30
     MemorySize: 128
     Environment:
