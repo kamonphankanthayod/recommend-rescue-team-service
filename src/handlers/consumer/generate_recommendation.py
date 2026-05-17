@@ -67,6 +67,7 @@ def invoke_worker_with_retry(payload, trace_id):
 # Main Logic
 # -------------------------
 def generate_recommendation(event):
+    print(f"Received event: {json.dumps(event)}")
     header = event.get("header", {})
     body = event.get("body", {})
 

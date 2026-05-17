@@ -106,6 +106,44 @@ Resources:
     Properties:
       TopicName: recommendation-generated-topic
 
+  # --- SNS Topic Policy ---
+  RecommendationGeneratedTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref RecommendationGeneratedTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Statement ที่ 1: อนุญาตให้ Account ตัวเองจัดการและ Publish ลง Topic ได้
+          - Sid: DefaultTopicPolicy
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - "sns:Publish"
+              - "sns:RemovePermission"
+              - "sns:SetTopicAttributes"
+              - "sns:DeleteTopic"
+              - "sns:ListSubscriptionsByTopic"
+              - "sns:GetTopicAttributes"
+              - "sns:AddPermission"
+              - "sns:Subscribe"
+            Resource: !Ref RecommendationGeneratedTopic
+            Condition:
+              StringEquals:
+                "AWS:SourceAccount": !Ref "AWS::AccountId"
+
+          # Statement ที่ 2: อนุญาตให้ Account เพื่อน (460581038623) มา Subscribe
+          - Sid: AllowCrossAccountSubscribe
+            Effect: Allow
+            Principal:
+              AWS: "arn:aws:iam::460581038623:root"
+            Action:
+              - "sns:Subscribe"
+              - "sns:Receive"
+            Resource: !Ref RecommendationGeneratedTopic
+    
   # --- SQS 1: รับจากเพื่อน (Rescue Request Prioritization Service ) ---
   RescueRequestDLQ:
     Type: AWS::SQS::Queue
@@ -174,26 +212,26 @@ Resources:
       TopicArn: !Ref RecommendationGeneratedTopic
 
   # --- SQS 3: รับจากเพื่อน (ManageDispatch) ---
-  DispatchCompleteDLQ:
-    Type: AWS::SQS::Queue
-  DispatchCompleteQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: dispatch_complete_queue
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt DispatchCompleteDLQ.Arn
-        maxReceiveCount: 3
+  # DispatchCompleteDLQ:
+  #   Type: AWS::SQS::Queue
+  # DispatchCompleteQueue:
+  #   Type: AWS::SQS::Queue
+  #   Properties:
+  #     QueueName: dispatch_complete_queue
+  #     RedrivePolicy:
+  #       deadLetterTargetArn: !GetAtt DispatchCompleteDLQ.Arn
+  #       maxReceiveCount: 3
 
-  DispatchCompleteQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues: [!Ref DispatchCompleteQueue]
-      PolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal: { Service: "sns.amazonaws.com" }
-            Action: "sqs:SendMessage"
-            Resource: !GetAtt DispatchCompleteQueue.Arn
+  # DispatchCompleteQueuePolicy:
+  #   Type: AWS::SQS::QueuePolicy
+  #   Properties:
+  #     Queues: [!Ref DispatchCompleteQueue]
+  #     PolicyDocument:
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal: { Service: "sns.amazonaws.com" }
+  #           Action: "sqs:SendMessage"
+  #           Resource: !GetAtt DispatchCompleteQueue.Arn
             # ARN SNS ของเพื่อนที่ส่งมา (ManageDispatch Service)
             # Condition:
             #   ArnEquals:
@@ -293,24 +331,24 @@ Resources:
       RetentionInDays: 7
 
   # --- Lambda 5: DispatchStatusUpdater ---
-  DispatchStatusUpdater:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ../src/
-      Handler: handlers.dispatchconsumer.app.dispatch_handler
-      Events:
-        SQSEvent:
-          Type: SQS
-          Properties:
-            Queue: !GetAtt DispatchCompleteQueue.Arn
-            BatchSize: 10
-      Policies:
-        - DynamoDBCrudPolicy: { TableName: !Ref RescueTeamsTable }
-  DispatchStatusUpdaterLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${DispatchStatusUpdater}"
-      RetentionInDays: 7
+  # DispatchStatusUpdater:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     CodeUri: ../src/
+  #     Handler: handlers.dispatchconsumer.app.dispatch_handler
+  #     Events:
+  #       SQSEvent:
+  #         Type: SQS
+  #         Properties:
+  #           Queue: !GetAtt DispatchCompleteQueue.Arn
+  #           BatchSize: 10
+  #     Policies:
+  #       - DynamoDBCrudPolicy: { TableName: !Ref RescueTeamsTable }
+  # DispatchStatusUpdaterLogGroup:
+  #   Type: AWS::Logs::LogGroup
+  #   Properties:
+  #     LogGroupName: !Sub "/aws/lambda/${DispatchStatusUpdater}"
+  #     RetentionInDays: 7
 
   # ==========================================
   # 4. MONITORING & ALARMS (แจ้งเตือน DLQ)

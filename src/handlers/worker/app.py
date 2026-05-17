@@ -360,7 +360,7 @@ def generate_ranked_teams(event_data, teams):
 # HANDLER
 # ---------------------------------------------------------
 def lambda_handler(event, context):
-    # print("RAW EVENT:", json.dumps(event))
+    print("RAW EVENT:", json.dumps(event))
 
     trace_id = event.get("trace_id", "unknown")
     recommendation_id = event.get("recommendation_id")
