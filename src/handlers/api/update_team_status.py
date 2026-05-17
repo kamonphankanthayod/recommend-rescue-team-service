@@ -15,6 +15,7 @@ VALID_STATUS = ["AVAILABLE", "BUSY", "OFFLINE"]
 
 
 def update_team_status(event):
+    print(f"Received event: {json.dumps(event)}")
     # HttpApi แบบ $default จะซ่อน requestId ไว้ใน requestContext
     req_context = event.get("requestContext", {})
     trace_id = req_context.get("requestId", "UNKNOWN_TRACE_ID")
@@ -76,7 +77,8 @@ def update_team_status(event):
         except:
             body = {}
 
-        new_status = body.get("status")
+        new_status = body.get("team_status") or body.get("status")
+        print(f"[{trace_id}] Parsed new_status: {new_status}")
 
         # -------------------------
         # Validation: status
