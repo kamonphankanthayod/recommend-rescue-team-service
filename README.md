@@ -109,3 +109,7 @@ sam deploy
 ## Development Notes
 - **Infrastructure Modifications:** Any additions to DynamoDB indexes, SQS queues, or Lambda permissions must be defined in infra/template.yaml.
 - **Cross-Account Subscriptions:** SNS topic ARNs for cross-account event subscriptions are managed via conditional IAM policies in the SAM template. Ensure strict ARN validation is enabled for production environments.
+
+## Source
+- Demo video [https://drive.google.com/file/d/19s4bnKZ6OT7c0reGmhn96Hwh3sZsjjXo/view?usp=sharing](https://drive.google.com/file/d/19s4bnKZ6OT7c0reGmhn96Hwh3sZsjjXo/view?usp=sharing)
+- Documentation [https://docs.google.com/document/d/1Tpxp_LGm1Szsp7ZmmHOlfccPyRza_9YtYsUICyDmuks/edit?usp=sharing](https://docs.google.com/document/d/1Tpxp_LGm1Szsp7ZmmHOlfccPyRza_9YtYsUICyDmuks/edit?usp=sharing)
